@@ -1,0 +1,17 @@
+{
+  "schema_version": "v1",
+  "name_for_model": "security_agent_chain",
+  "name_for_human": "Security Agent Chain (Bug Bounty & Pentest)",
+  "description_for_model": "Execute real security reconnaissance, asset mapping, vulnerability triage, and code auditing tools natively on Kali Linux. Includes subfinder, httpx, katana, naabu, nuclei, ffuf, semgrep, trufflehog, burpsuite, and JetBrains ijhttp/qodana.",
+  "description_for_human": "Run automated bug bounty, reconnaissance, and security testing pipelines.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://raw.githubusercontent.com/buurosaaqi-dev/security-agent-chain/main/plugin/openapi.yaml"
+  },
+  "logo_url": "https://raw.githubusercontent.com/buurosaaqi-dev/security-agent-chain/main/assets/logo.png",
+  "contact_email": "security@buurosaaqi.dev",
+  "legal_info_url": "https://github.com/buurosaaqi-dev/security-agent-chain"
+}

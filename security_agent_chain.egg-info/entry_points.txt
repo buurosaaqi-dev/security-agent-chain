@@ -1,0 +1,2 @@
+[console_scripts]
+agent-chain = bin.agent_chain_cli:main

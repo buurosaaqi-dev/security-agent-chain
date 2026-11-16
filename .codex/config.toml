@@ -1,0 +1,9 @@
+[mcp_servers.security-chain]
+command = "python3"
+args = ["mcp_server.py"]
+cwd = "/home/kali/.gemini/antigravity/scratch/security-agent-chain"
+startup_timeout_sec = 20
+tool_timeout_sec = 900
+
+[mcp_servers.security-chain.env]
+SECURITY_CHAIN_SCOPE_FILE = "/home/kali/.gemini/antigravity/scratch/security-agent-chain/config/scope.json"

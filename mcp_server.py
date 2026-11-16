@@ -8,7 +8,6 @@ to Kali Linux bug bounty and defensive security tools.
 """
 
 import sys
-import os
 import json
 from pathlib import Path
 
@@ -18,9 +17,17 @@ sys.path.insert(0, str(BASE_DIR))
 
 from mcp.server.fastmcp import FastMCP
 from pipeline.orchestrator import SecurityAgentChain
+from pipeline.policy import SecurityChainError
 
 # Initialize MCP Server
-mcp = FastMCP("security-chain")
+mcp = FastMCP(
+    "security-chain",
+    instructions=(
+        "Authorized defensive security only. Network tools fail closed unless config/scope.json "
+        "confirms authorization, matches the target, and enables the exact feature. Never bypass "
+        "scope, rate limits, exclusions, required headers, or program rules. Review findings before reporting."
+    ),
+)
 chain = SecurityAgentChain(base_dir=str(BASE_DIR))
 
 
@@ -29,6 +36,21 @@ def toolchain_status() -> str:
     """Hubi xaaladda dhammaan qalabka amniga ee ku rakiban Kali Linux (subfinder, httpx, katana, naabu, nuclei, ffuf, semgrep, bandit, trufflehog, burpsuite)."""
     res = chain.check_status()
     return json.dumps(res, indent=2)
+
+
+@mcp.tool()
+def scope_status() -> str:
+    """Show the loaded program, authorization state, allowed feature gates, and target count without sending network traffic."""
+    return json.dumps(chain.scope.status(), indent=2)
+
+
+@mcp.tool()
+def scope_check(target: str, feature: str) -> str:
+    """Verify that a target and operation are authorized without running a scanner."""
+    try:
+        return json.dumps(chain.check_scope(target, feature), indent=2)
+    except SecurityChainError as exc:
+        return json.dumps({"allowed": False, "error": str(exc)}, indent=2)
 
 
 @mcp.tool()
@@ -141,5 +163,9 @@ def qodana_scan(project_path: str, linter: str = "") -> str:
         return json.dumps({"error": str(e)})
 
 
-if __name__ == "__main__":
+def main() -> None:
     mcp.run(transport="stdio")
+
+
+if __name__ == "__main__":
+    main()

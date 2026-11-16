@@ -1,0 +1,24 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "security-chain": {
+        "type": "local",
+        "command": [
+          "python3",
+          "/home/kali/.gemini/antigravity/scratch/security-agent-chain/mcp_server.py"
+        ],
+        "cwd": "/home/kali/.gemini/antigravity/scratch/security-agent-chain",
+        "environment": {
+          "SECURITY_CHAIN_SCOPE_FILE": "/home/kali/.gemini/antigravity/scratch/security-agent-chain/config/scope.json"
+        },
+        "codemode": true,
+        "timeout": {
+          "startup": 30000,
+          "catalog": 30000,
+          "execution": 900000
+        }
+      }
+    }
+  }
+}

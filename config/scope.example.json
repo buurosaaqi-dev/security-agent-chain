@@ -1,0 +1,41 @@
+{
+  "program": "REPLACE_WITH_PROGRAM_NAME",
+  "program_url": "https://hackerone.com/REPLACE_ME/policy_scopes",
+  "authorization_confirmed": false,
+  "expires_on": null,
+  "targets": [
+    {
+      "host": "example.com",
+      "include_subdomains": false,
+      "path_prefixes": []
+    }
+  ],
+  "excluded_hosts": [],
+  "required_headers": {
+    "X-Bug-Bounty": "HackerOne-REPLACE_WITH_HANDLE"
+  },
+  "allowed_local_roots": [
+    "/home/kali/.gemini/antigravity/scratch/security-agent-chain"
+  ],
+  "allow_private_targets": false,
+  "allow_full_port_scan": false,
+  "rate_limits": {
+    "http_per_second": 2,
+    "ports_per_second": 50,
+    "max_crawl_depth": 2
+  },
+  "nuclei_exclude_tags": [
+    "dos",
+    "fuzz",
+    "bruteforce",
+    "credential-stuffing"
+  ],
+  "features": {
+    "passive_recon": false,
+    "active_recon": false,
+    "port_scan": false,
+    "nuclei": false,
+    "fuzzing": false,
+    "http_replay": false
+  }
+}

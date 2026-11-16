@@ -2,6 +2,36 @@
   {
     "type": "function",
     "function": {
+      "name": "scope_status",
+      "description": "Show the loaded program scope, authorization state, target count, required headers, and enabled feature gates without network traffic.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "scope_check",
+      "description": "Check whether a target and operation are authorized without running a scanner.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target": {"type": "string"},
+          "feature": {
+            "type": "string",
+            "enum": ["passive_recon", "active_recon", "port_scan", "nuclei", "fuzzing", "http_replay"]
+          }
+        },
+        "required": ["target", "feature"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
       "name": "recon_domain",
       "description": "Run full automated reconnaissance chain (Subfinder -> HTTPX -> Katana). Returns subdomains, live hosts, and crawled endpoints.",
       "parameters": {

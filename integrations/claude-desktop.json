@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "security-chain": {
+      "command": "python3",
+      "args": [
+        "/home/kali/.gemini/antigravity/scratch/security-agent-chain/mcp_server.py"
+      ],
+      "cwd": "/home/kali/.gemini/antigravity/scratch/security-agent-chain",
+      "env": {
+        "SECURITY_CHAIN_SCOPE_FILE": "/home/kali/.gemini/antigravity/scratch/security-agent-chain/config/scope.json"
+      }
+    }
+  }
+}

@@ -1,1 +1,3 @@
 bin
+mcp_server
+pipeline

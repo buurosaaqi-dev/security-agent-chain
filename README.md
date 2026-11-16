@@ -39,6 +39,12 @@ Ensure `agent-chain` is in your PATH (e.g. `~/.local/bin/agent-chain`):
 # Check toolchain readiness
 agent-chain status
 
+# Create a locked scope policy, then review config/scope.json against
+# the current HackerOne policy before enabling any network feature
+agent-chain scope init PROGRAM_NAME target.example
+agent-chain scope status
+agent-chain scope check active_recon https://target.example
+
 # Run automated reconnaissance chain (Subfinder -> HTTPX -> Katana)
 agent-chain recon example.com
 
@@ -47,7 +53,7 @@ agent-chain audit https://example.com
 # Or pass a list of discovered live hosts:
 agent-chain audit results/example.com_YYYYMMDD_HHMMSS/live_hosts.txt
 
-# Run SAST code & secrets scan on a source directory
+# Run Semgrep + Bandit + redacted TruffleHog on an allowed local directory
 agent-chain sast /path/to/project
 
 # Run JetBrains HTTP Client payload or requests
@@ -90,6 +96,18 @@ sast_res = chain.run_sast_audit("/path/to/repo")
 print(f"Semgrep findings: {sast_res['semgrep_findings_count']}")
 ```
 
+### MCP clients
+
+The MCP server uses stdio, adds server-wide authorization instructions, and exposes
+`scope_status` / `scope_check` alongside the scanner tools. Ready-to-merge examples are in:
+
+- `integrations/opencode.jsonc`
+- `integrations/codex-config.toml`
+- `integrations/claude-desktop.json`
+
+Every network method enforces the same scope file, exclusions, feature gates, required
+headers, and request-rate limits. A missing or unconfirmed scope file fails closed.
+
 ---
 
 ## 📁 Result Structure
@@ -100,17 +118,28 @@ All operations store timestamped, deterministic artifacts in the `results/` dire
 results/
 ├── example.com_20261116_164500/
 │   ├── subdomains.txt      # Raw harvested subdomains
-│   ├── live_hosts.txt      # HTTPX validated live targets & tech stacks
+│   ├── live_urls.txt       # Scoped URL-only input for Katana
+│   ├── httpx.jsonl         # HTTPX live targets & technology metadata
 │   ├── endpoints.txt       # Katana crawled endpoints
 │   └── recon.json          # Machine-readable JSON summary for AI agents
 ├── nuclei_audit_20261116_165000.json
 └── sast_20261116_165500/
     ├── semgrep.json
-    └── trufflehog.json
+    ├── bandit.json
+    ├── trufflehog.jsonl    # Secret values redacted
+    └── summary.json
 ```
 
 ---
 
 ## 🔒 Security & Defensive Framing
 
-All workflows are strictly designed for authorized vulnerability research, defensive engineering, and bug bounty verification under responsible disclosure terms.
+All network workflows require an explicit `config/scope.json` authorization record. The
+chain blocks unlisted targets, excluded hosts, private/reserved addresses by default,
+disabled scanner classes, expired authorization, and unsafe full-port scans. Scanner
+failures are surfaced instead of being reported as empty success. Result files are stored
+with owner-only permissions; common secret-bearing fields are redacted.
+
+The configuration does not create authorization. Copy the exact current scope, exclusions,
+headers, rate limits, and automation rules from the relevant program before enabling a
+feature. Never enable a scanner class merely because the binary is installed.

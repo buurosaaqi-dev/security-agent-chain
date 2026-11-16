@@ -31,6 +31,8 @@ class SecurityAgentChain:
             "bandit": shutil.which("bandit") or os.path.expanduser("~/.local/bin/bandit"),
             "trufflehog": shutil.which("trufflehog") or "/usr/local/bin/trufflehog",
             "burpsuite": shutil.which("burpsuite") or "/usr/bin/burpsuite",
+            "ijhttp": shutil.which("ijhttp") or os.path.expanduser("~/.local/bin/ijhttp"),
+            "qodana": shutil.which("qodana") or os.path.expanduser("~/.local/bin/qodana"),
         }
 
     def _run_cmd(self, cmd: List[str], cwd: Optional[str] = None, timeout: int = 120) -> subprocess.CompletedProcess:
@@ -218,4 +220,43 @@ class SecurityAgentChain:
             "pid": proc.pid,
             "proxy_host": "127.0.0.1",
             "proxy_port": 8080,
+        }
+
+    def run_ijhttp(self, target_file_or_content: str) -> Dict[str, Any]:
+        """Run IntelliJ HTTP Client requests against APIs/endpoints."""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        if os.path.exists(target_file_or_content):
+            target_path = target_file_or_content
+        else:
+            temp_file = self.results_dir / f"request_{timestamp}.http"
+            temp_file.write_text(target_file_or_content)
+            target_path = str(temp_file)
+
+        cmd = [self.tools["ijhttp"], target_path]
+        res = self._run_cmd(cmd, timeout=60)
+        return {
+            "timestamp": timestamp,
+            "target": target_path,
+            "success": res.returncode == 0,
+            "stdout": res.stdout,
+            "stderr": res.stderr,
+        }
+
+    def run_qodana(self, project_dir: str, linter: Optional[str] = None) -> Dict[str, Any]:
+        """Run JetBrains Qodana static code security inspection."""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        results_out = self.results_dir / f"qodana_{timestamp}"
+        results_out.mkdir(parents=True, exist_ok=True)
+
+        cmd = [self.tools["qodana"], "scan", "-i", project_dir, "-o", str(results_out), "--print-problems"]
+        if linter:
+            cmd.extend(["-l", linter])
+
+        res = self._run_cmd(cmd, timeout=300)
+        return {
+            "timestamp": timestamp,
+            "project_dir": project_dir,
+            "results_dir": str(results_out),
+            "output": res.stdout[-2000:] if len(res.stdout) > 2000 else res.stdout,
+            "success": res.returncode == 0,
         }

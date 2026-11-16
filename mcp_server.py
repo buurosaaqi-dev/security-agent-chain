@@ -121,5 +121,25 @@ def start_burp() -> str:
         return json.dumps({"error": str(e)})
 
 
+@mcp.tool()
+def ijhttp_run(request_file_or_content: str) -> str:
+    """Orod IntelliJ HTTP Client (.http) adigoo u diraya codsiyo API testing, payloads, ama replaying."""
+    try:
+        res = chain.run_ijhttp(request_file_or_content)
+        return json.dumps(res, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def qodana_scan(project_path: str, linter: str = "") -> str:
+    """Orod JetBrains Qodana static code security & vulnerability inspection matoorka koodhka."""
+    try:
+        res = chain.run_qodana(project_path, linter=linter or None)
+        return json.dumps(res, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
 if __name__ == "__main__":
     mcp.run(transport="stdio")

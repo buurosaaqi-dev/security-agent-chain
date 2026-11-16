@@ -19,6 +19,8 @@ Usage:
   agent-chain recon <domain>          Run passive & active recon (subfinder + httpx + katana)
   agent-chain audit <url|hosts.txt>   Run nuclei vulnerability verification (medium/high/critical)
   agent-chain sast <path_to_code>     Run Semgrep & TruffleHog SAST code audit
+  agent-chain http <file.http>        Run IntelliJ HTTP Client request payloads
+  agent-chain qodana <path_to_code>   Run JetBrains Qodana static code security audit
   agent-chain burp                    Launch Burp Suite Community in background
   agent-chain status                  Verify all installed toolchain binaries
 """)
@@ -74,6 +76,24 @@ def main():
         print("[+] Launching Burp Suite...")
         res = chain.start_burpsuite()
         print(f"[✓] Burp Suite running (PID: {res['pid']}). Proxy listening on {res['proxy_host']}:{res['proxy_port']}")
+
+    elif cmd == "http":
+        if len(sys.argv) < 3:
+            print("Error: HTTP file or content required. Usage: agent-chain http <request.http>")
+            sys.exit(1)
+        req = sys.argv[2]
+        print(f"[+] Running IntelliJ HTTP Client on: {req}...")
+        res = chain.run_ijhttp(req)
+        print(res["stdout"])
+
+    elif cmd == "qodana":
+        if len(sys.argv) < 3:
+            print("Error: Target project directory required. Usage: agent-chain qodana <path>")
+            sys.exit(1)
+        path = sys.argv[2]
+        print(f"[+] Running JetBrains Qodana static security analysis on: {path}...")
+        res = chain.run_qodana(path)
+        print(res["output"])
 
     else:
         print_help()

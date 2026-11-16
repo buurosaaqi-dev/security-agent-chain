@@ -26,6 +26,8 @@ Built specifically for:
 | **Python SAST** | `bandit` | Python AST security flaw detection |
 | **Secrets Audit** | `trufflehog`| Git and filesystem secret scanning with verification |
 | **Proxy / Intercept**| `burpsuite` | Interactive proxy & traffic inspection |
+| **JetBrains HTTP** | `ijhttp` | IntelliJ HTTP Client CLI for automated API fuzzing & requests |
+| **JetBrains SAST** | `qodana` | JetBrains official static code security & vulnerability inspection |
 
 ---
 
@@ -47,6 +49,14 @@ agent-chain audit results/example.com_YYYYMMDD_HHMMSS/live_hosts.txt
 
 # Run SAST code & secrets scan on a source directory
 agent-chain sast /path/to/project
+
+# Run JetBrains HTTP Client payload or requests
+agent-chain http "GET https://example.com/api"
+# Or run an existing .http file:
+agent-chain http exploits/test.http
+
+# Run JetBrains Qodana static code security audit
+agent-chain qodana /path/to/project
 
 # Launch Burp Suite in background
 agent-chain burp

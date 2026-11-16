@@ -21,7 +21,7 @@ class SecurityAgentChain:
         # Pre-resolve tool binaries
         self.tools = {
             "subfinder": shutil.which("subfinder") or "/usr/bin/subfinder",
-            "httpx": shutil.which("httpx") or "/usr/bin/httpx",
+            "httpx": shutil.which("httpx-toolkit") or shutil.which("httpx") or "/usr/bin/httpx-toolkit",
             "katana": shutil.which("katana") or "/usr/local/bin/katana",
             "naabu": shutil.which("naabu") or "/usr/bin/naabu",
             "nuclei": shutil.which("nuclei") or "/usr/bin/nuclei",
@@ -131,7 +131,10 @@ class SecurityAgentChain:
 
     def run_naabu(self, host: str, top_ports: str = "100") -> List[str]:
         """Scan TCP ports on host."""
-        cmd = [self.tools["naabu"], "-host", host, "-top-ports", top_ports, "-silent"]
+        if str(top_ports).lower() in ["100", "1000", "full"]:
+            cmd = [self.tools["naabu"], "-host", host, "-top-ports", str(top_ports).lower(), "-silent"]
+        else:
+            cmd = [self.tools["naabu"], "-host", host, "-p", str(top_ports), "-silent"]
         res = self._run_cmd(cmd, timeout=60)
         return [line.strip() for line in res.stdout.splitlines() if line.strip()]
 

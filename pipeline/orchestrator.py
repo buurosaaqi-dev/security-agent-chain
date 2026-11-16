@@ -4,7 +4,7 @@ import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 
 class SecurityAgentChain:
@@ -33,15 +33,29 @@ class SecurityAgentChain:
             "burpsuite": shutil.which("burpsuite") or "/usr/bin/burpsuite",
         }
 
-    def _run_cmd(self, cmd: List[str], cwd: Optional[str] = None) -> subprocess.CompletedProcess:
-        return subprocess.run(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            cwd=cwd or str(self.base_dir),
-            check=False,
-        )
+    def _run_cmd(self, cmd: List[str], cwd: Optional[str] = None, timeout: int = 120) -> subprocess.CompletedProcess:
+        try:
+            return subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                cwd=cwd or str(self.base_dir),
+                check=False,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            return subprocess.CompletedProcess(cmd, returncode=-1, stdout="", stderr="Command timed out")
+
+    def check_status(self) -> Dict[str, Any]:
+        """Check availability of all security tools."""
+        statuses = {}
+        for name, path in self.tools.items():
+            statuses[name] = {
+                "path": path,
+                "available": bool(path and os.path.exists(path)),
+            }
+        return statuses
 
     def run_recon(self, domain: str) -> Dict[str, Any]:
         """Runs subfinder -> httpx -> katana asset mapping chain."""
@@ -55,20 +69,20 @@ class SecurityAgentChain:
         recon_json = target_dir / "recon.json"
 
         # 1. Subfinder
-        self._run_cmd([self.tools["subfinder"], "-d", domain, "-silent", "-all", "-o", str(subdomains_file)])
+        self._run_cmd([self.tools["subfinder"], "-d", domain, "-silent", "-all", "-o", str(subdomains_file)], timeout=90)
         subdomains = [line.strip() for line in subdomains_file.read_text().splitlines() if line.strip()] if subdomains_file.exists() else []
 
         # 2. Httpx probing
         if subdomains_file.exists() and subdomains:
-            self._run_cmd([self.tools["httpx"], "-l", str(subdomains_file), "-silent", "-title", "-tech-detect", "-status-code", "-o", str(live_hosts_file)])
+            self._run_cmd([self.tools["httpx"], "-l", str(subdomains_file), "-silent", "-title", "-tech-detect", "-status-code", "-o", str(live_hosts_file)], timeout=60)
         else:
-            self._run_cmd([self.tools["httpx"], "-u", f"https://{domain}", "-silent", "-title", "-tech-detect", "-status-code", "-o", str(live_hosts_file)])
+            self._run_cmd([self.tools["httpx"], "-u", f"https://{domain}", "-silent", "-title", "-tech-detect", "-status-code", "-o", str(live_hosts_file)], timeout=30)
 
         live_hosts = [line.strip() for line in live_hosts_file.read_text().splitlines() if line.strip()] if live_hosts_file.exists() else []
 
         # 3. Katana crawling
         if live_hosts_file.exists() and live_hosts:
-            self._run_cmd([self.tools["katana"], "-list", str(live_hosts_file), "-silent", "-d", "2", "-jc", "-o", str(endpoints_file)])
+            self._run_cmd([self.tools["katana"], "-list", str(live_hosts_file), "-silent", "-d", "2", "-jc", "-o", str(endpoints_file)], timeout=120)
         endpoints = [line.strip() for line in endpoints_file.read_text().splitlines() if line.strip()] if endpoints_file.exists() else []
 
         result = {
@@ -79,11 +93,47 @@ class SecurityAgentChain:
             "live_hosts_count": len(live_hosts),
             "endpoints_count": len(endpoints),
             "live_hosts": live_hosts,
-            "endpoints": endpoints[:50],  # Sample for overview
+            "endpoints": endpoints[:50],
         }
 
         recon_json.write_text(json.dumps(result, indent=2))
         return result
+
+    def run_subfinder(self, domain: str) -> List[str]:
+        """Harvest subdomains using subfinder."""
+        cmd = [self.tools["subfinder"], "-d", domain, "-silent"]
+        res = self._run_cmd(cmd, timeout=60)
+        return [line.strip() for line in res.stdout.splitlines() if line.strip()]
+
+    def run_httpx(self, target_or_list: str) -> List[Dict[str, Any]]:
+        """Probe live HTTP/HTTPS endpoints with httpx (returns JSON)."""
+        cmd = [self.tools["httpx"], "-silent", "-title", "-tech-detect", "-status-code", "-json"]
+        if os.path.exists(target_or_list):
+            cmd.extend(["-l", target_or_list])
+        else:
+            cmd.extend(["-u", target_or_list])
+
+        res = self._run_cmd(cmd, timeout=60)
+        results = []
+        for line in res.stdout.splitlines():
+            if line.strip():
+                try:
+                    results.append(json.loads(line))
+                except json.JSONDecodeError:
+                    pass
+        return results
+
+    def run_katana(self, url: str, depth: int = 2) -> List[str]:
+        """Crawl endpoints and API paths using katana."""
+        cmd = [self.tools["katana"], "-u", url, "-silent", "-d", str(depth), "-jc"]
+        res = self._run_cmd(cmd, timeout=60)
+        return [line.strip() for line in res.stdout.splitlines() if line.strip()]
+
+    def run_naabu(self, host: str, top_ports: str = "100") -> List[str]:
+        """Scan TCP ports on host."""
+        cmd = [self.tools["naabu"], "-host", host, "-top-ports", top_ports, "-silent"]
+        res = self._run_cmd(cmd, timeout=60)
+        return [line.strip() for line in res.stdout.splitlines() if line.strip()]
 
     def run_nuclei_audit(self, target_list_or_url: str, severity: str = "medium,high,critical") -> Dict[str, Any]:
         """Runs nuclei template auditing against a target URL or list file."""
@@ -96,7 +146,7 @@ class SecurityAgentChain:
         else:
             cmd.extend(["-u", target_list_or_url])
 
-        self._run_cmd(cmd)
+        self._run_cmd(cmd, timeout=180)
 
         findings = []
         if output_file.exists():
@@ -114,6 +164,18 @@ class SecurityAgentChain:
             "output_file": str(output_file),
         }
 
+    def run_ffuf(self, url: str, wordlist: str = "/usr/share/wordlists/dirb/common.txt", match_codes: str = "200,204,301,302,307,401,403") -> Dict[str, Any]:
+        """Run directory or parameter fuzzing with ffuf."""
+        if "FUZZ" not in url:
+            url = url.rstrip("/") + "/FUZZ"
+
+        cmd = [self.tools["ffuf"], "-u", url, "-w", wordlist, "-mc", match_codes, "-silent", "-json"]
+        res = self._run_cmd(cmd, timeout=90)
+        try:
+            return json.loads(res.stdout)
+        except json.JSONDecodeError:
+            return {"raw_output": res.stdout, "stderr": res.stderr}
+
     def run_sast_audit(self, target_path: str) -> Dict[str, Any]:
         """Runs Semgrep, Bandit, and TruffleHog against local source code."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -124,10 +186,10 @@ class SecurityAgentChain:
         trufflehog_file = target_dir / "trufflehog.json"
 
         # 1. Semgrep SAST
-        self._run_cmd([self.tools["semgrep"], "scan", "--config=auto", "--json", "-o", str(semgrep_file), target_path])
+        self._run_cmd([self.tools["semgrep"], "scan", "--config=auto", "--json", "-o", str(semgrep_file), target_path], timeout=120)
 
         # 2. TruffleHog Secrets
-        self._run_cmd([self.tools["trufflehog"], "filesystem", target_path, "--json"], cwd=str(target_dir))
+        self._run_cmd([self.tools["trufflehog"], "filesystem", target_path, "--json"], cwd=str(target_dir), timeout=60)
 
         semgrep_findings = []
         if semgrep_file.exists():
